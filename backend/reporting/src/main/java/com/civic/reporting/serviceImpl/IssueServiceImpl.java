@@ -6,11 +6,9 @@ import org.springframework.stereotype.Service;
 
 import com.civic.reporting.dto.IssueReportDTO;
 import com.civic.reporting.model.Issue;
-import com.civic.reporting.model.enumFolder.Category;
 import com.civic.reporting.model.enumFolder.Status;
 import com.civic.reporting.repository.IssueRepository;
 import com.civic.reporting.service.IssueService;
-import com.civic.reporting.service.VisionService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -19,7 +17,7 @@ import lombok.RequiredArgsConstructor;
 public class IssueServiceImpl implements IssueService {
 
     private final IssueRepository issueRepo;
-    private final VisionService visionService;
+    private final ClassificationWorker classificationWorker;
 
     @Override
     public Issue reportIssue(IssueReportDTO dto) {
@@ -28,13 +26,15 @@ public class IssueServiceImpl implements IssueService {
         issue.setDescription(dto.getDescription());
         issue.setLatitude(dto.getLatitude());
         issue.setLongitude(dto.getLongitude());
-        issue.setStatus(Status.REPORTED);
+        issue.setPhotoUrl(dto.getPhotoUrl());
+        issue.setStatus(Status.PENDING_CLASSIFICATION);
         issue.setCreatedAt(LocalDateTime.now());
 
-        String detectedCategory = visionService.detectCategory(dto.getPhotoUrl());
+        Issue saved = issueRepo.save(issue);
 
-        issue.setCategory(Category.valueOf(detectedCategory.toUpperCase()));
+        // Dispatch async classification
+        classificationWorker.classify(saved.getId(), dto.getPhotoUrl(), dto.getLatitude(), dto.getLongitude());
 
-        return issueRepo.save(issue);
+        return saved;
     }
 }

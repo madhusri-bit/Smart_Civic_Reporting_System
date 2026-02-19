@@ -4,5 +4,7 @@ public enum Category {
     ROAD,
     WATER,
     GARBAGE,
-    ELECTRICITY
+    ELECTRICITY,
+    WASTE,
+    OTHER
 }

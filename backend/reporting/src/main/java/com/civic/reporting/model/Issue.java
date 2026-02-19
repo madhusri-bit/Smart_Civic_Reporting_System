@@ -17,6 +17,7 @@ public class Issue {
 
     private String title;
     private String description;
+    private String photoUrl;
 
     @Enumerated(EnumType.STRING)
     private Category category;
@@ -26,6 +27,22 @@ public class Issue {
 
     private Double latitude;
     private Double longitude;
+
+    // Prediction / provenance metadata
+    @Enumerated(EnumType.STRING)
+    private Category predictedCategory;
+
+    private Double predictionConfidence;
+
+    private Double authenticityScore;
+
+    private Double imageLatitude;
+    private Double imageLongitude;
+
+    private Double gpsDistanceMeters;
+
+    @Lob
+    private String visionResponseJson;
 
     private Double priorityScore;
 

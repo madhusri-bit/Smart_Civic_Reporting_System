@@ -7,6 +7,7 @@ import java.time.*;
 import com.civic.reporting.model.enumFolder.Role;
 
 @Entity
+@Table(name = "users")
 @Data
 public class User {
 
