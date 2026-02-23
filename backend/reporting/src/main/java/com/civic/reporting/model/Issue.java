@@ -15,8 +15,13 @@ public class Issue {
     @GeneratedValue
     private Long id;
 
+    @Column(length = 512)
     private String title;
+
+    @Column(columnDefinition = "TEXT")
     private String description;
+
+    @Column(length = 1024)
     private String photoUrl;
 
     @Enumerated(EnumType.STRING)
@@ -41,7 +46,7 @@ public class Issue {
 
     private Double gpsDistanceMeters;
 
-    @Lob
+    @Column(columnDefinition = "TEXT")
     private String visionResponseJson;
 
     private Double priorityScore;

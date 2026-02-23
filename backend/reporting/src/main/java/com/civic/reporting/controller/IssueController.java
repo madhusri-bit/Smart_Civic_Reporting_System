@@ -11,6 +11,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.civic.reporting.dto.IssueReportDTO;
 import com.civic.reporting.model.Issue;
+import com.civic.reporting.model.enumFolder.Category;
 import com.civic.reporting.service.IssueService;
 import com.civic.reporting.service.S3Service;
 import com.civic.reporting.config.JwtUtil;
@@ -155,8 +156,58 @@ public class IssueController {
         dto.setPhotoUrl(photoUrl);
 
         Issue created = issueService.reportIssue(dto);
+        applyGeminiPrediction(created, category);
+        created = issueRepo.save(created);
 
         return created;
+    }
+
+    private void applyGeminiPrediction(Issue issue, String categoryText) {
+        Category mapped = mapCategory(categoryText);
+        if (mapped == null) {
+            return;
+        }
+        issue.setPredictedCategory(mapped);
+        issue.setCategory(mapped);
+        issue.setPredictionConfidence(0.80);
+        issue.setPriorityScore(defaultPriority(mapped));
+    }
+
+    private Category mapCategory(String categoryText) {
+        if (categoryText == null || categoryText.isBlank()) {
+            return null;
+        }
+        String normalized = categoryText.trim().toUpperCase().replaceAll("\\s+", "_");
+        try {
+            Category parsed = Category.valueOf(normalized);
+            return isDbSafeCategory(parsed) ? parsed : null;
+        } catch (IllegalArgumentException ex) {
+            if (normalized.contains("GARBAGE") || normalized.contains("TRASH") || normalized.contains("LITTER")) {
+                return Category.GARBAGE;
+            }
+            return null;
+        }
+    }
+
+    private boolean isDbSafeCategory(Category category) {
+        return category == Category.ROAD
+                || category == Category.WATER
+                || category == Category.GARBAGE
+                || category == Category.ELECTRICITY;
+    }
+
+    private double defaultPriority(Category category) {
+        switch (category) {
+            case ROAD:
+            case WATER:
+            case ELECTRICITY:
+                return 75.0;
+            case WASTE:
+            case GARBAGE:
+                return 65.0;
+            default:
+                return 50.0;
+        }
     }
 
     private double haversine(double lat1, double lon1, double lat2, double lon2) {

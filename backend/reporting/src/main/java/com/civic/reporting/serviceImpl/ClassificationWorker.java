@@ -76,6 +76,9 @@ public class ClassificationWorker {
         } else {
             issue.setStatus(Status.MANUAL_REVIEW);
         }
+        if (issue.getPredictedCategory() != null) {
+            issue.setPriorityScore(computePriority(issue.getPredictedCategory(), issue.getPredictionConfidence()));
+        }
 
         issueRepo.save(issue);
     }
@@ -96,15 +99,27 @@ public class ClassificationWorker {
             return null;
         String n = label.trim().toUpperCase().replaceAll("\\s+", "_");
         try {
-            return Category.valueOf(n);
+            Category parsed = Category.valueOf(n);
+            return isDbSafeCategory(parsed) ? parsed : null;
         } catch (IllegalArgumentException e) {
             // fallback mappings
             if (n.contains("TRASH") || n.contains("GARBAGE") || n.contains("LITTER"))
-                return Category.WASTE;
+                return Category.GARBAGE;
             if (n.contains("POTHOLE") || n.contains("ROAD"))
                 return Category.ROAD;
-            return Category.OTHER;
+            if (n.contains("WATER") || n.contains("LEAK") || n.contains("PIPE"))
+                return Category.WATER;
+            if (n.contains("LIGHT") || n.contains("ELECTRIC"))
+                return Category.ELECTRICITY;
+            return null;
         }
+    }
+
+    private boolean isDbSafeCategory(Category category) {
+        return category == Category.ROAD
+                || category == Category.WATER
+                || category == Category.GARBAGE
+                || category == Category.ELECTRICITY;
     }
 
     private String mapCategoryToDepartment(Category c) {
@@ -118,5 +133,27 @@ public class ClassificationWorker {
             default:
                 return "General";
         }
+    }
+
+    private double computePriority(Category category, Double confidence) {
+        double base;
+        switch (category) {
+            case ROAD:
+            case WATER:
+            case ELECTRICITY:
+                base = 75.0;
+                break;
+            case WASTE:
+            case GARBAGE:
+                base = 65.0;
+                break;
+            default:
+                base = 50.0;
+                break;
+        }
+        if (confidence == null) {
+            return base;
+        }
+        return Math.min(100.0, base + (confidence * 10.0));
     }
 }

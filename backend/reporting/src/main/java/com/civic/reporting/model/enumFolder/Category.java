@@ -6,5 +6,6 @@ public enum Category {
     GARBAGE,
     ELECTRICITY,
     WASTE,
+    GENERAL,
     OTHER
 }
