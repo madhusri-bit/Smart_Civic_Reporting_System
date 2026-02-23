@@ -25,5 +25,12 @@ public class User {
     private Integer reputationScore;
     private String preferredLanguage;
 
+    // New address/profile fields
+    private String state;
+    private String city;
+    private String pincode;
+    private String address;
+    private String profile; // profile image URL
+
     private LocalDateTime createdAt;
 }

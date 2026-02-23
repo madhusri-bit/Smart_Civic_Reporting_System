@@ -7,7 +7,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.civic.reporting.model.Assignment;
-import com.civic.reporting.model.Department;
 import com.civic.reporting.model.Issue;
 import com.civic.reporting.model.enumFolder.Category;
 import com.civic.reporting.model.enumFolder.Status;
