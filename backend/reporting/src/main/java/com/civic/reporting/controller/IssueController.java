@@ -21,6 +21,8 @@ import com.civic.reporting.service.ExifService;
 import com.civic.reporting.service.LocationService;
 import com.civic.reporting.service.GeminiService;
 import com.civic.reporting.service.GeminiResult;
+import com.civic.reporting.service.VisionResult;
+import com.civic.reporting.service.VisionService;
 import com.civic.reporting.repository.IssueRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -40,6 +42,7 @@ public class IssueController {
     private final ExifService exifService;
     private final LocationService locationService;
     private final GeminiService geminiService;
+    private final VisionService visionService;
     private final IssueRepository issueRepo;
 
     // Existing JSON endpoint (unchanged)
@@ -120,28 +123,47 @@ public class IssueController {
         var gem = geminiService.analyzeImage(photoUrl);
         String title = "Reported Issue";
         String description = null;
-        String category = null;
+        String categoryText = null;
         if (gem.isPresent()) {
             GeminiResult res = gem.get();
             if (res.getTitle() != null && !res.getTitle().isBlank()) {
                 title = res.getTitle();
             }
             description = res.getDescription();
-            category = res.getCategory();
+            categoryText = res.getCategory();
+        }
+        Category mappedCategory = mapCategory(categoryText);
+        if (mappedCategory == null) {
+            try {
+                var vision = visionService.analyzeImage(photoUrl);
+                if (vision.isPresent()) {
+                    VisionResult vr = vision.get();
+                    mappedCategory = mapCategory(vr.label);
+                    if (description == null || description.isBlank()) {
+                        description = "Detected via Vision: " + vr.label;
+                    }
+                }
+            } catch (Exception ignored) {
+            }
         }
 
         // Duplicate check: naive—same category and nearby existing issue with similar
         // title
         var all = issueRepo.findAll();
         for (Issue other : all) {
-            if (other.getPredictedCategory() != null && category != null
-                    && other.getPredictedCategory().toString().equalsIgnoreCase(category)) {
-                if (other.getImageLatitude() != null && other.getImageLongitude() != null) {
-                    double d = haversine(other.getImageLatitude(), other.getImageLongitude(), gps[0], gps[1]);
-                    if (d < 100) {
-                        // similar location and category — mark duplicate
-                        return Map.of("status", "duplicate", "message", "Issue looks similar to existing report",
-                                "existingIssueId", other.getId());
+            if (other.getImageLatitude() != null && other.getImageLongitude() != null) {
+                double d = haversine(other.getImageLatitude(), other.getImageLongitude(), gps[0], gps[1]);
+                if (d < 100) {
+                    boolean categoryMatch = mappedCategory == null
+                            || mappedCategory.equals(other.getPredictedCategory())
+                            || mappedCategory.equals(other.getCategory());
+                    if (categoryMatch) {
+                        return Map.of(
+                                "status", "duplicate",
+                                "message", "Issue already reported nearby. Do you want to upvote?",
+                                "action", "UPVOTE",
+                                "existingIssueId", other.getId(),
+                                "distanceMeters", d);
                     }
                 }
             }
@@ -156,14 +178,13 @@ public class IssueController {
         dto.setPhotoUrl(photoUrl);
 
         Issue created = issueService.reportIssue(dto);
-        applyGeminiPrediction(created, category);
+        applyGeminiPrediction(created, mappedCategory);
         created = issueRepo.save(created);
 
         return created;
     }
 
-    private void applyGeminiPrediction(Issue issue, String categoryText) {
-        Category mapped = mapCategory(categoryText);
+    private void applyGeminiPrediction(Issue issue, Category mapped) {
         if (mapped == null) {
             return;
         }
