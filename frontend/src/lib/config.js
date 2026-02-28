@@ -1,6 +1,7 @@
-const BASE_URL_KEY = "civic_base_url";
+const BASE_URL_KEY = "http://localhost:8080";
 const TOKEN_KEY = "civic_api_token";
 const HISTORY_KEY = "civic_api_history";
+const USER_KEY = "civic_user";
 
 export function getBaseUrl() {
   return localStorage.getItem(BASE_URL_KEY) || "http://localhost:8080";
@@ -32,3 +33,18 @@ export function getHistory() {
   }
 }
 
+export function setUser(user) {
+  if (!user) {
+    localStorage.removeItem(USER_KEY);
+  } else {
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
+  }
+}
+
+export function getUser() {
+  try {
+    return JSON.parse(localStorage.getItem(USER_KEY) || "null");
+  } catch {
+    return null;
+  }
+}

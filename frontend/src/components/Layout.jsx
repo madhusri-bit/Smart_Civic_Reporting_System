@@ -1,56 +1,58 @@
-import { Link, NavLink } from "react-router-dom";
-import { getBaseUrl, getToken, setBaseUrl, setToken } from "../lib/config";
-import { useState } from "react";
+import { NavLink } from "react-router-dom";
 import React from "react";
+import { getUser, setToken, setUser } from "../lib/config";
+import { useEffect, useState } from "react";
 
-const tabs = [
+const baseTabs = [
   ["/", "Dashboard"],
-  ["/auth/login", "Login"],
-  ["/auth/register", "Register"],
-  ["/issues/image", "Image Upload"],
-  ["/issues/report", "Issue Report"],
-  ["/location", "Location"],
   ["/community", "Community"],
-  ["/escalation", "Escalation"],
 ];
 
 export default function Layout({ children }) {
-  const [baseUrl, setBase] = useState(getBaseUrl());
-  const [token, setTokenState] = useState(getToken());
+  const [user, setUserState] = useState(getUser());
 
-  const save = () => {
-    setBaseUrl(baseUrl);
-    setToken(token);
-    alert("Config saved");
+  const role = user?.role || "GUEST";
+
+  const tabs = [...baseTabs];
+  if (role === "ADMIN") {
+    tabs.push(["/admin", "Admin"]);
+  }
+  if (role === "OFFICER" || role === "HEAD") {
+    tabs.push(["/department", "Department"]);
+  }
+  if (!user) {
+    tabs.push(["/auth/login", "Login"]);
+    tabs.push(["/auth/register", "Register"]);
+  }
+
+  const logout = () => {
+    setToken("");
+    setUser(null);
+    setUserState(null);
   };
+
+  useEffect(() => {
+    const onStorage = () => setUserState(getUser());
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
 
   return (
     <div className="shell">
       <header className="topbar">
         <div>
-          <h1>Civic Reporting Console</h1>
-          <p>React frontend to test all backend endpoints</p>
+          <h1>Civic Reporting System</h1>
+          <p>Simple portal for citizens to report issues</p>
         </div>
-        <Link to="/" className="brand-tag">
-          API QA
-        </Link>
+        <div className="header-actions">
+          <span className="pill-role">{role}</span>
+          {user ? (
+            <button className="ghost" type="button" onClick={logout}>
+              Logout
+            </button>
+          ) : null}
+        </div>
       </header>
-
-      <section className="config-card">
-        <label>
-          Backend URL
-          <input value={baseUrl} onChange={(e) => setBase(e.target.value)} />
-        </label>
-        <label>
-          JWT Token
-          <input
-            value={token}
-            onChange={(e) => setTokenState(e.target.value)}
-            placeholder="token only"
-          />
-        </label>
-        <button onClick={save}>Save Config</button>
-      </section>
 
       <nav className="nav">
         {tabs.map(([path, label]) => (
